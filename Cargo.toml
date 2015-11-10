@@ -1,0 +1,4 @@
+[package]
+name = "demise-rust"
+version = "0.1.0"
+authors = ["Christopher Fu <chrisf1337@gmail.com>"]
