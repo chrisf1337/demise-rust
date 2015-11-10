@@ -3,13 +3,17 @@ use self::unicode_segmentation::UnicodeSegmentation;
 
 pub struct Buffer {
     pub contents: Vec<String>,
-    pub end: Coord,
+    pub bytes: usize,
+    pub chars: usize,
+    pub point: Coord
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Coord {
     x: usize,
     y: usize
 }
+
 
 impl Coord {
     pub fn new(x: usize, y: usize) -> Coord {
@@ -20,18 +24,29 @@ impl Coord {
     }
 }
 
+impl PartialEq for Coord {
+    fn eq(&self, other: &Coord) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
 impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
             contents: vec!["\n".to_string()],
-            end: Coord::new(1, 0)
+            bytes: 1,
+            chars: 1,
+            point: Coord::new(0, 0)
         }
     }
 
-    pub fn insert_string_at_coord(&mut self, string: &str, coord: Coord) {
+    pub fn insert_string_at_coord(&mut self, string: &str, coord: &Coord) {
         if string.is_empty() {
             return;
         }
+
+        self.bytes += string.bytes().count();
+        self.chars += string.chars().count();
 
         assert!(coord.y <= self.contents.len());
         assert!(coord.x < self.contents[coord.y].len());
@@ -112,5 +127,51 @@ impl Buffer {
                 self.contents.insert(current_line_number, last_line);
             }
         }
+    }
+
+    pub fn insert_string_at_point(&mut self, string: &str) {
+        let point = self.point.clone();
+        self.insert_string_at_coord(string, &point);
+        self.move_point(UnicodeSegmentation::grapheme_indices(string, true).count() as i32);
+    }
+
+    pub fn move_point(&mut self, distance: i32) -> Coord {
+        if distance == 0 {
+            return self.point.clone();
+        }
+        let mut dist: i32;
+        if distance < 0 {
+            dist = -distance;
+            while dist > 0 {
+                if self.point.x == 0 {
+                    if self.point.y == 0 {
+                        self.point = Coord::new(0, 0);
+                        return Coord::new(0, 0);
+                    }
+                    self.point.y -= 1;
+                    self.point.x = self.contents[self.point.y].len() - 1;
+                }
+                else {
+                    self.point.x -= 1;
+                }
+                dist -= 1;
+            }
+        }
+        else {
+            dist = distance;
+            while dist > 0 {
+                self.point.x += 1;
+                if self.point.x == self.contents[self.point.y].len() {
+                    if self.point.y == self.contents.len() - 1 {
+                        self.point = Coord::new(self.contents[self.point.y].len() - 1, self.contents.len() - 1);
+                        return self.point.clone();
+                    }
+                    self.point.y += 1;
+                    self.point.x = 0;
+                }
+                dist -= 1;
+            }
+        }
+        return self.point.clone();
     }
 }
