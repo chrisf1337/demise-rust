@@ -1,5 +1,6 @@
 extern crate unicode_segmentation;
 use self::unicode_segmentation::UnicodeSegmentation;
+use std::cmp::Ordering;
 
 pub struct Buffer {
     pub contents: Vec<String>,
@@ -8,7 +9,7 @@ pub struct Buffer {
     pub point: Coord
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Coord {
     x: usize,
     y: usize
@@ -24,9 +25,20 @@ impl Coord {
     }
 }
 
-impl PartialEq for Coord {
-    fn eq(&self, other: &Coord) -> bool {
-        self.x == other.x && self.y == other.y
+impl PartialOrd for Coord {
+    fn partial_cmp(&self, other: &Coord) -> Option<Ordering> {
+        if self == other {
+            Some(Ordering::Equal)
+        }
+        else if self.y > other.y {
+            Some(Ordering::Greater)
+        }
+        else if self.x > other.x {
+            Some(Ordering::Greater)
+        }
+        else {
+            Some(Ordering::Less)
+        }
     }
 }
 
@@ -49,6 +61,9 @@ impl Buffer {
         self.chars += string.chars().count();
 
         assert!(coord.y <= self.contents.len());
+        if coord.y == self.contents.len() {
+            self.contents.push("\n".to_string());
+        }
         assert!(coord.x < self.contents[coord.y].len());
 
         let lines: Vec<&str> = string.lines().collect();
@@ -57,6 +72,7 @@ impl Buffer {
             let last_char = string.chars().last();
             if last_char == Some('\n') {
                 let line = self.contents[coord.y].clone();
+
                 // let char_indices: Vec<(usize, char)>;
                 let char_indices: Vec<(usize, &str)> = UnicodeSegmentation::grapheme_indices(&line[..], true).collect();
                 // {
@@ -173,5 +189,30 @@ impl Buffer {
             }
         }
         return self.point.clone();
+    }
+
+    pub fn delete_from_to(&mut self, start: &Coord, end: &Coord) {
+        assert!(start.y < self.contents.len() && end.y < self.contents.len());
+        assert!(start.x <= self.contents[start.y].len() && end.x <= self.contents[end.y].len());
+        if start.y == end.y {
+            let current_line = self.contents[start.y].clone();
+            let char_indices: Vec<(usize, &str)> = UnicodeSegmentation::grapheme_indices(&current_line[..], true).collect();
+            let (last_grapheme_index, _) = *(char_indices.iter().last().unwrap());
+            println!("Last grapheme index: {}", last_grapheme_index);
+            if end.x == last_grapheme_index + 1 {
+                assert!(start.y != self.contents.len() - 1);
+                let (start_index, _) = *(char_indices.iter().nth(start.x).unwrap());
+                let end_index = current_line.len();
+                self.contents[start.y].drain(start_index..end_index);
+                if self.contents[start.y].is_empty() {
+                    self.contents.remove(start.y);
+                }
+                else {
+                    let next_line = self.contents[start.y + 1].clone();
+                    self.contents[start.y].push_str(&next_line);
+                }
+            }
+        }
+
     }
 }
