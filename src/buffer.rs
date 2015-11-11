@@ -52,6 +52,9 @@ impl Buffer {
         }
     }
 
+    /**
+     * Moves self.point if the insert point is before the current point.
+     */
     pub fn insert_string_at_coord(&mut self, string: &str, coord: &Coord) {
         if string.is_empty() {
             return;
@@ -122,9 +125,20 @@ impl Buffer {
                 }
             }
         }
+
+        // Move point if insert point is less than current point
+        if coord < &self.point {
+            self.move_point(UniSeg::grapheme_indices(string, true).count() as i32);
+        }
     }
 
+    // Does not move self.point
     pub fn insert_string_at_point(&mut self, string: &str) {
+        let point = self.point.clone();
+        self.insert_string_at_coord(string, &point);
+    }
+
+    pub fn insert_string_at_point_and_move(&mut self, string: &str) {
         let point = self.point.clone();
         self.insert_string_at_coord(string, &point);
         self.move_point(UniSeg::grapheme_indices(string, true).count() as i32);
@@ -169,6 +183,7 @@ impl Buffer {
         }
         return self.point.clone();
     }
+
 
     pub fn delete_from_to(&mut self, start: &Coord, end: &Coord) {
         assert!(start.y < self.contents.len() && end.y < self.contents.len());

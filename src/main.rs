@@ -65,10 +65,12 @@ fn test_buffer_move_point() {
     let mut buffer = Buffer::new();
     buffer.insert_string_at_point("abc");
     assert_eq!(buffer.contents[0], "abc\n");
+    assert_eq!(buffer.point, Coord::new(0, 0));
+    buffer.move_point(3);
     assert_eq!(buffer.point, Coord::new(3, 0));
     buffer.move_point(1);
     assert_eq!(buffer.point, Coord::new(3, 0));
-    buffer.insert_string_at_point("def\ngh");
+    buffer.insert_string_at_point_and_move("def\ngh");
     assert_eq!(buffer.contents[0], "abcdef\n");
     assert_eq!(buffer.contents[1], "gh\n");
     assert_eq!(buffer.point, Coord::new(2, 1));
@@ -78,7 +80,7 @@ fn test_buffer_move_point() {
     assert_eq!(buffer.point, Coord::new(0, 0));
     buffer.move_point(20);
     assert_eq!(buffer.point, Coord::new(2, 1));
-    buffer.insert_string_at_point("\n\n\n");
+    buffer.insert_string_at_point_and_move("\n\n\n");
     assert_eq!(buffer.point, Coord::new(0, 4));
     buffer.move_point(-3);
     assert_eq!(buffer.point, Coord::new(2, 1));
