@@ -87,10 +87,49 @@ fn test_buffer_move_point() {
 #[test]
 fn test_buffer_delete_from_to() {
     let mut buffer = Buffer::new();
-    buffer.insert_string_at_point("abc\ndef");
-    assert_eq!(buffer.contents[0], "abc\n");
-    assert_eq!(buffer.contents[1], "def\n");
+    buffer.insert_string_at_point("ðïc\nåâf");
+    assert_eq!(buffer.contents[0], "ðïc\n");
+    assert_eq!(buffer.contents[1], "åâf\n");
     buffer.delete_from_to(&Coord::new(0, 0), &Coord::new(4, 0));
     assert_eq!(buffer.contents.len(), 1);
-    assert_eq!(buffer.contents[0], "def\n");
+    assert_eq!(buffer.contents[0], "åâf\n");
+
+    let mut buffer1 = Buffer::new();
+    buffer1.insert_string_at_point("abc\ndef");
+    buffer1.delete_from_to(&Coord::new(2, 0), &Coord::new(4, 0));
+    assert_eq!(buffer1.contents.len(), 1);
+    assert_eq!(buffer1.contents[0], "abdef\n");
+    buffer1.insert_string_at_coord("hij\n", &Coord::new(0, 1));
+    buffer1.delete_from_to(&Coord::new(2, 1), &Coord::new(4, 1));
+    assert_eq!(buffer1.contents[1], "hi\n");
+
+    let mut buffer2 = Buffer::new();
+    buffer2.insert_string_at_point("abc\ndef");
+    buffer2.delete_from_to(&Coord::new(1, 1), &Coord::new(3, 1));
+    assert_eq!(buffer2.contents[0], "abc\n");
+    assert_eq!(buffer2.contents[1], "d\n");
+    buffer2.insert_string_at_coord("ef", &Coord::new(1, 1));
+    assert_eq!(buffer2.contents[0], "abc\n");
+    assert_eq!(buffer2.contents[1], "def\n");
+    buffer2.delete_from_to(&Coord::new(1, 0), &Coord::new(1, 1));
+    assert_eq!(buffer2.contents.len(), 1);
+    assert_eq!(buffer2.contents[0], "aef\n");
+    buffer2.insert_string_at_coord("bcd\n", &Coord::new(0, 0));
+    assert_eq!(buffer2.contents[0], "bcd\n");
+    assert_eq!(buffer2.contents[1], "aef\n");
+    buffer2.delete_from_to(&Coord::new(2, 0), &Coord::new(3, 1));
+    assert_eq!(buffer2.contents.len(), 1);
+    assert_eq!(buffer2.contents[0], "bc\n");
+    buffer2.insert_string_at_coord("abc\ndef\nghi", &Coord::new(0, 0));
+    assert_eq!(buffer2.contents.len(), 3);
+    assert_eq!(buffer2.contents[0], "abc\n");
+    assert_eq!(buffer2.contents[1], "def\n");
+    assert_eq!(buffer2.contents[2], "ghibc\n");
+    buffer2.delete_from_to(&Coord::new(0, 0), &Coord::new(2, 2));
+    assert_eq!(buffer2.contents.len(), 1);
+    assert_eq!(buffer2.contents[0], "ibc\n");
+    buffer2.insert_string_at_coord("abc\ndef\nghi", &Coord::new(0, 0));
+    buffer2.delete_from_to(&Coord::new(0, 0), &Coord::new(7, 2));
+    assert_eq!(buffer2.contents.len(), 1);
+    assert_eq!(buffer2.contents[0], "\n");
 }
