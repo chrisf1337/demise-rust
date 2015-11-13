@@ -6,7 +6,7 @@ pub struct Buffer {
     pub contents: Vec<String>,
     pub bytes: usize,
     pub chars: usize,
-    pub point: Coord
+    point: Coord
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -275,5 +275,9 @@ impl Buffer {
                 self.contents.push("\n".to_string());
             }
         }
+    }
+
+    pub fn point(&self) -> Coord {
+        self.point.clone()
     }
 }

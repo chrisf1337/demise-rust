@@ -1,11 +1,70 @@
 #![feature(drain)]
+extern crate byteorder;
 
 mod buffer;
-use buffer::Buffer;
-use buffer::Coord;
+mod editor;
+use buffer::{Buffer, Coord};
+use editor::Editor;
+use std::net::{TcpListener, TcpStream};
+use std::thread;
+use std::io::{Read, Write, Cursor};
+use byteorder::*;
+
+fn handle_client(mut stream: TcpStream) {
+    let mut buf: Vec<u8>;
+    loop {
+        let mut size_buf = [0u8; 4];
+        let size: u32;
+
+        let _ = match stream.read(&mut size_buf) {
+            Err(e) => panic!("Got an error: {}", e),
+            Ok(m) => {
+                if m == 0 {
+                    break;
+                }
+                m
+            }
+        };
+
+        println!("{:?}", size_buf);
+        size = Cursor::new(&size_buf).read_u32::<LittleEndian>().unwrap();
+        println!("{}", size);
+
+        buf = vec![0; size as usize];
+        let _ = match stream.read(&mut buf[..]) {
+            Err(e) => panic!("Got an error: {}", e),
+            Ok(m) => {
+                if m == 0 {
+                    break;
+                }
+                m
+            }
+        };
+
+        println!("{:?}", String::from_utf8(buf.clone()));
+
+        // match stream.write(&buf) {
+        //     Err(_) => break,
+        //     Ok(_) => continue
+        // }
+    }
+}
 
 fn main() {
-    println!("Hello, world!");
+    let listener = TcpListener::bind("localhost:8888").unwrap();
+    for stream in listener.incoming() {
+        match stream {
+            Err(e) => {
+                println!("Socket error: {}", e);
+            }
+            Ok(stream) => {
+                println!("Spawning thread");
+                thread::spawn(move || {
+                    handle_client(stream)
+                });
+            }
+        }
+    }
 }
 
 #[test]
@@ -65,25 +124,25 @@ fn test_buffer_move_point() {
     let mut buffer = Buffer::new();
     buffer.insert_string_at_point("abc");
     assert_eq!(buffer.contents[0], "abc\n");
-    assert_eq!(buffer.point, Coord::new(0, 0));
+    assert_eq!(buffer.point(), Coord::new(0, 0));
     buffer.move_point(3);
-    assert_eq!(buffer.point, Coord::new(3, 0));
+    assert_eq!(buffer.point(), Coord::new(3, 0));
     buffer.move_point(1);
-    assert_eq!(buffer.point, Coord::new(3, 0));
+    assert_eq!(buffer.point(), Coord::new(3, 0));
     buffer.insert_string_at_point_and_move("def\ngh");
     assert_eq!(buffer.contents[0], "abcdef\n");
     assert_eq!(buffer.contents[1], "gh\n");
-    assert_eq!(buffer.point, Coord::new(2, 1));
+    assert_eq!(buffer.point(), Coord::new(2, 1));
     buffer.move_point(-5);
-    assert_eq!(buffer.point, Coord::new(4, 0));
+    assert_eq!(buffer.point(), Coord::new(4, 0));
     buffer.move_point(-5);
-    assert_eq!(buffer.point, Coord::new(0, 0));
+    assert_eq!(buffer.point(), Coord::new(0, 0));
     buffer.move_point(20);
-    assert_eq!(buffer.point, Coord::new(2, 1));
+    assert_eq!(buffer.point(), Coord::new(2, 1));
     buffer.insert_string_at_point_and_move("\n\n\n");
-    assert_eq!(buffer.point, Coord::new(0, 4));
+    assert_eq!(buffer.point(), Coord::new(0, 4));
     buffer.move_point(-3);
-    assert_eq!(buffer.point, Coord::new(2, 1));
+    assert_eq!(buffer.point(), Coord::new(2, 1));
 }
 
 #[test]
@@ -134,4 +193,14 @@ fn test_buffer_delete_from_to() {
     buffer2.delete_from_to(&Coord::new(0, 0), &Coord::new(7, 2));
     assert_eq!(buffer2.contents.len(), 1);
     assert_eq!(buffer2.contents[0], "\n");
+}
+
+#[test]
+fn test_editor() {
+    let mut editor = Editor::new();
+    {
+        let current_buffer = editor.current_buffer();
+        current_buffer.insert_string_at_point("abc");
+    }
+    assert_eq!(editor.buffers[0].contents[0], "abc\n");
 }

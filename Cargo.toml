@@ -5,3 +5,4 @@ authors = ["Christopher Fu <chrisf1337@gmail.com>"]
 
 [dependencies]
 unicode-segmentation = "0.1.2"
+byteorder = "0.4"
