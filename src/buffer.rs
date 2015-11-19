@@ -1,5 +1,6 @@
 extern crate unicode_segmentation;
 use self::unicode_segmentation::UnicodeSegmentation as UniSeg;
+use editor::Direction;
 use std::cmp::Ordering;
 
 pub struct Buffer {
@@ -76,7 +77,8 @@ impl Buffer {
             let mut second_half_string = "".to_string();
             let line = self.contents[coord.y].clone();
             // let char_indices: Vec<(usize, char)> = self.contents[current_line_number].char_indices().collect();
-            let char_indices: Vec<(usize, &str)> = UniSeg::grapheme_indices(&line[..], true).collect();
+            let char_indices: Vec<(usize, &str)> =
+                UniSeg::grapheme_indices(&line[..], true).collect();
             for (i, &(index, _)) in char_indices.iter().enumerate() {
                 if coord.x == i {
                     let mut first_half_string: String;
@@ -116,7 +118,8 @@ impl Buffer {
             let line = &mut self.contents[coord.y];
             // let line_str: &str = &line;
             // let char_indices: Vec<(usize, char)> = line.char_indices().collect();
-            let char_indices: Vec<(usize, &str)> = UniSeg::grapheme_indices(&line_clone[..], true).collect();
+            let char_indices: Vec<(usize, &str)> =
+                UniSeg::grapheme_indices(&line_clone[..], true).collect();
             for (i, &(index, _)) in char_indices.iter().enumerate() {
                 if coord.x == i {
                     for (string_index, string_char) in string.char_indices() {
@@ -128,7 +131,7 @@ impl Buffer {
 
         // Move point if insert point is less than current point
         if coord < &self.point {
-            self.move_point(UniSeg::grapheme_indices(string, true).count() as i32);
+            self.move_point_dist(UniSeg::grapheme_indices(string, true).count() as i32);
         }
     }
 
@@ -141,10 +144,10 @@ impl Buffer {
     pub fn insert_string_at_point_and_move(&mut self, string: &str) {
         let point = self.point.clone();
         self.insert_string_at_coord(string, &point);
-        self.move_point(UniSeg::grapheme_indices(string, true).count() as i32);
+        self.move_point_dist(UniSeg::grapheme_indices(string, true).count() as i32);
     }
 
-    pub fn move_point(&mut self, distance: i32) -> Coord {
+    pub fn move_point_dist(&mut self, distance: i32) -> Coord {
         if distance == 0 {
             return self.point.clone();
         }
@@ -172,7 +175,8 @@ impl Buffer {
                 self.point.x += 1;
                 if self.point.x == self.contents[self.point.y].len() {
                     if self.point.y == self.contents.len() - 1 {
-                        self.point = Coord::new(self.contents[self.point.y].len() - 1, self.contents.len() - 1);
+                        self.point = Coord::new(self.contents[self.point.y].len() - 1,
+                                                self.contents.len() - 1);
                         return self.point.clone();
                     }
                     self.point.y += 1;
@@ -184,6 +188,46 @@ impl Buffer {
         return self.point.clone();
     }
 
+    pub fn move_point_in_dir(&mut self, direction: Direction, units: i32) -> Coord {
+        if units == 0 {
+            return self.point.clone();
+        }
+        match direction {
+            Direction::Up => {
+                let mut offset: i32;
+                if units < 0 {
+                    offset = -units;
+                }
+                else {
+                    offset = units;
+                }
+                while offset > 0 && self.point.y > 0 {
+                    self.point.y -= 1;
+                    offset -= 1;
+                }
+            },
+            Direction::Down => {
+                let mut offset: i32;
+                if units < 0 {
+                    offset = -units;
+                }
+                else {
+                    offset = units;
+                }
+                while offset > 0 && self.point.y < self.contents.len() {
+                    self.point.y += 1;
+                    offset -= 1;
+                }
+            },
+            Direction::Left => {
+
+            },
+            Direction::Right => {
+
+            },
+        }
+        return self.point.clone();
+    }
 
     pub fn delete_from_to(&mut self, start: &Coord, end: &Coord) {
         assert!(start.y < self.contents.len() && end.y < self.contents.len());
@@ -196,7 +240,8 @@ impl Buffer {
         // Single line
         if start.y == end.y {
             let current_line = self.contents[start.y].clone();
-            let char_indices: Vec<(usize, &str)> = UniSeg::grapheme_indices(&current_line[..], true).collect();
+            let char_indices: Vec<(usize, &str)> =
+                UniSeg::grapheme_indices(&current_line[..], true).collect();
             println!("{:?}", char_indices);
             let (last_grapheme_index, _) = *(char_indices.iter().last().unwrap());
             println!("Last grapheme index: {}", last_grapheme_index);
@@ -238,15 +283,18 @@ impl Buffer {
 
             let mut first_line = self.contents[start.y].clone();
             let first_line_clone = first_line.clone();
-            let first_line_grapheme_indices: Vec<(usize, &str)> = UniSeg::grapheme_indices(&first_line_clone[..], true).collect();
-            let (first_line_start_index, _) = *(first_line_grapheme_indices.iter().nth(start.x).unwrap());
+            let first_line_grapheme_indices: Vec<(usize, &str)> =
+                UniSeg::grapheme_indices(&first_line_clone[..], true).collect();
+            let (first_line_start_index, _) =
+                *(first_line_grapheme_indices.iter().nth(start.x).unwrap());
             first_line.drain(first_line_start_index..first_line_clone.len());
             let new_first_line = first_line.clone();
             println!("{}", new_first_line);
 
             let mut last_line = self.contents[end.y].clone();
             let last_line_clone = last_line.clone();
-            let last_line_grapheme_indices: Vec<(usize, &str)> = UniSeg::grapheme_indices(&last_line_clone[..], true).collect();
+            let last_line_grapheme_indices: Vec<(usize, &str)> =
+                UniSeg::grapheme_indices(&last_line_clone[..], true).collect();
             let last_line_end_index: usize;
             if end.x == last_line.len() {
                 last_line_end_index = last_line.len()

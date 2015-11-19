@@ -4,7 +4,7 @@ extern crate byteorder;
 mod buffer;
 mod editor;
 use buffer::{Buffer, Coord};
-use editor::Editor;
+use editor::{Editor, MoveAction, Actionable, Direction};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::io::{Read, Write, Cursor};
@@ -50,7 +50,7 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
-fn main() {
+fn open_socket() {
     let listener = TcpListener::bind("localhost:8888").unwrap();
     for stream in listener.incoming() {
         match stream {
@@ -65,6 +65,10 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    open_socket();
 }
 
 #[test]
@@ -120,29 +124,36 @@ fn test_buffer_insert() {
 }
 
 #[test]
-fn test_buffer_move_point() {
+fn test_buffer_move_point_dist() {
     let mut buffer = Buffer::new();
     buffer.insert_string_at_point("abc");
     assert_eq!(buffer.contents[0], "abc\n");
     assert_eq!(buffer.point(), Coord::new(0, 0));
-    buffer.move_point(3);
+    buffer.move_point_dist(3);
     assert_eq!(buffer.point(), Coord::new(3, 0));
-    buffer.move_point(1);
+    buffer.move_point_dist(1);
     assert_eq!(buffer.point(), Coord::new(3, 0));
     buffer.insert_string_at_point_and_move("def\ngh");
     assert_eq!(buffer.contents[0], "abcdef\n");
     assert_eq!(buffer.contents[1], "gh\n");
     assert_eq!(buffer.point(), Coord::new(2, 1));
-    buffer.move_point(-5);
+    buffer.move_point_dist(-5);
     assert_eq!(buffer.point(), Coord::new(4, 0));
-    buffer.move_point(-5);
+    buffer.move_point_dist(-5);
     assert_eq!(buffer.point(), Coord::new(0, 0));
-    buffer.move_point(20);
+    buffer.move_point_dist(20);
     assert_eq!(buffer.point(), Coord::new(2, 1));
     buffer.insert_string_at_point_and_move("\n\n\n");
     assert_eq!(buffer.point(), Coord::new(0, 4));
-    buffer.move_point(-3);
+    buffer.move_point_dist(-3);
     assert_eq!(buffer.point(), Coord::new(2, 1));
+}
+
+#[test]
+fn test_buffer_move_point_in_dir() {
+    let mut buffer = Buffer::new();
+    buffer.insert_string_at_point("abc\ndef\nghi\nabc");
+    assert_eq!(buffer.contents.len(), 4);
 }
 
 #[test]
@@ -203,4 +214,17 @@ fn test_editor() {
         current_buffer.insert_string_at_point("abc");
     }
     assert_eq!(editor.buffers[0].contents[0], "abc\n");
+
+    let mut editor1 = Editor::new();
+    assert_eq!(editor1.open_file(0).is_ok(), true);
+    let buffer1 = editor1.current_buffer();
+    assert_eq!(buffer1.contents.len(), 2);
+    assert_eq!(buffer1.contents[0], "abcdef\n");
+    assert_eq!(buffer1.contents[1], "ghi\n");
+}
+
+#[test]
+fn test_editor_actions() {
+    let editor = Editor::new();
+    let move_action = MoveAction::new(&editor, Direction::Up, 0);
 }
