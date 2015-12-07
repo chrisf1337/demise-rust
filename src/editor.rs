@@ -1,9 +1,12 @@
-use buffer::{Buffer, Coord};
+// -*- flycheck-rust-crate-type: "bin" -*-
+
+use buffer::{Buffer};
 use std::path::PathBuf;
 use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
 use std::io;
+use utils::{Direction, Coord};
 
 pub struct Editor {
     pub buffers: Vec<Buffer>,
@@ -35,14 +38,6 @@ impl<'a> Editor {
         }
         Ok(())
     }
-}
-
-#[derive(PartialEq)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
 }
 
 pub trait Actionable {

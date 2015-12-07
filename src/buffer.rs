@@ -1,46 +1,14 @@
 extern crate unicode_segmentation;
 use self::unicode_segmentation::UnicodeSegmentation as UniSeg;
-use editor::Direction;
-use std::cmp::Ordering;
+use utils::{Direction, Coord};
 
 pub struct Buffer {
     pub contents: Vec<String>,
     pub bytes: usize,
     pub chars: usize,
-    point: Coord
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Coord {
-    x: usize,
-    y: usize
-}
-
-
-impl Coord {
-    pub fn new(x: usize, y: usize) -> Coord {
-        Coord {
-            x: x,
-            y: y
-        }
-    }
-}
-
-impl PartialOrd for Coord {
-    fn partial_cmp(&self, other: &Coord) -> Option<Ordering> {
-        if self == other {
-            Some(Ordering::Equal)
-        }
-        else if self.y > other.y {
-            Some(Ordering::Greater)
-        }
-        else if self.x > other.x {
-            Some(Ordering::Greater)
-        }
-        else {
-            Some(Ordering::Less)
-        }
-    }
+    point: Coord,
+    adhere_to_eol: bool,
+    previous_x_pos: usize
 }
 
 impl Buffer {
@@ -49,7 +17,9 @@ impl Buffer {
             contents: vec!["\n".to_string()],
             bytes: 1,
             chars: 1,
-            point: Coord::new(0, 0)
+            point: Coord::new(0, 0),
+            adhere_to_eol: false,
+            previous_x_pos: 0
         }
     }
 
@@ -205,6 +175,9 @@ impl Buffer {
                     self.point.y -= 1;
                     offset -= 1;
                 }
+                if self.adhere_to_eol || self.point.x >= self.contents[self.point.y].len() {
+                    self.point.x = self.contents[self.point.y].len() - 1;
+                }
             },
             Direction::Down => {
                 let mut offset: i32;
@@ -218,13 +191,22 @@ impl Buffer {
                     self.point.y += 1;
                     offset -= 1;
                 }
+                if self.point.y == self.contents.len() {
+                    self.point.x = 0;
+                } else if self.adhere_to_eol || self.point.x >= self.contents[self.point.y].len() {
+                    self.point.x = self.contents[self.point.y].len() - 1;
+                }
             },
             Direction::Left => {
-
+                self.move_point_dist(-units);
             },
             Direction::Right => {
-
+                self.move_point_dist(units);
             },
+        }
+        if direction == Direction::Left || direction == Direction::Right {
+            self.adhere_to_eol = self.point.x != 0 &&
+                self.point.x == self.contents[self.point.y].len() - 1;
         }
         return self.point.clone();
     }
@@ -327,5 +309,15 @@ impl Buffer {
 
     pub fn point(&self) -> Coord {
         self.point.clone()
+    }
+
+    pub fn set_point(&mut self, new_point: &Coord) {
+        if new_point.y >= self.contents.len() {
+            assert!(new_point.x == 0 && new_point.y == self.contents.len());
+        } else {
+            assert!(new_point.y < self.contents.len() &&
+                    new_point.x < self.contents[new_point.x].len());
+        }
+        self.point = *new_point;
     }
 }

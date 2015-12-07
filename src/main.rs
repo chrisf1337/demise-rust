@@ -3,8 +3,10 @@ extern crate byteorder;
 
 mod buffer;
 mod editor;
-use buffer::{Buffer, Coord};
-use editor::{Editor, MoveAction, Actionable, Direction};
+mod utils;
+use buffer::{Buffer};
+use editor::{Editor, MoveAction, Actionable};
+use utils::{Direction, Coord};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::io::{Read, Write, Cursor};
@@ -152,8 +154,25 @@ fn test_buffer_move_point_dist() {
 #[test]
 fn test_buffer_move_point_in_dir() {
     let mut buffer = Buffer::new();
-    buffer.insert_string_at_point("abc\ndef\nghi\nabc");
+    // abcdef\n
+    // def\n
+    // ghidefdef\n
+    // a\n
+    buffer.insert_string_at_point("abcdef\ndef\nghidefdef\na");
     assert_eq!(buffer.contents.len(), 4);
+    buffer.move_point_in_dir(Direction::Down, 3);
+    assert_eq!(buffer.point(), Coord::new(0, 3));
+    buffer.move_point_in_dir(Direction::Up, 2);
+    assert_eq!(buffer.point(), Coord::new(0, 1));
+    buffer.move_point_in_dir(Direction::Up, 3);
+    assert_eq!(buffer.point(), Coord::new(0, 0));
+    buffer.move_point_in_dir(Direction::Down, 3);
+    assert_eq!(buffer.point(), Coord::new(0, 3));
+    buffer.move_point_in_dir(Direction::Down, 3);
+    assert_eq!(buffer.point(), Coord::new(0, 4));
+
+    buffer.set_point(&Coord::new(0, 0));
+    assert_eq!(buffer.point(), Coord::new(0, 0));
 }
 
 #[test]
