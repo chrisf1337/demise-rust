@@ -173,6 +173,18 @@ fn test_buffer_move_point_in_dir() {
 
     buffer.set_point(&Coord::new(0, 0));
     assert_eq!(buffer.point(), Coord::new(0, 0));
+    buffer.move_point_in_dir(Direction::Right, 6);
+    assert_eq!(buffer.point(), Coord::new(6, 0));
+    buffer.move_point_in_dir(Direction::Down, 1);
+    assert_eq!(buffer.point(), Coord::new(3, 1));
+    buffer.move_point_in_dir(Direction::Left, 1);
+    assert_eq!(buffer.point(), Coord::new(2, 1));
+    buffer.move_point_in_dir(Direction::Up, 1);
+    assert_eq!(buffer.point(), Coord::new(2, 0));
+    buffer.move_point_in_dir(Direction::Down, 3);
+    assert_eq!(buffer.point(), Coord::new(1, 3));
+    buffer.move_point_in_dir(Direction::Down, 1);
+    assert_eq!(buffer.point(), Coord::new(0, 4));
 }
 
 #[test]
