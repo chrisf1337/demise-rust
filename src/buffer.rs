@@ -204,10 +204,10 @@ impl Buffer {
                 self.move_point_dist(units);
             },
         }
-        if direction == Direction::Left || direction == Direction::Right {
-            self.adhere_to_eol = self.point.x != 0 &&
-                self.point.x == self.contents[self.point.y].len() - 1;
-        }
+        // if direction == Direction::Left || direction == Direction::Right {
+        //     self.adhere_to_eol = self.point.x != 0 &&
+        //         self.point.x == self.contents[self.point.y].len() - 1;
+        // }
         return self.point.clone();
     }
 
