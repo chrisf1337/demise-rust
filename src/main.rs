@@ -1,5 +1,6 @@
 #![feature(drain)]
 extern crate byteorder;
+extern crate serde_json;
 
 mod buffer;
 mod editor;
@@ -11,11 +12,14 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::io::{Read, Write, Cursor};
 use byteorder::*;
+use serde_json::Value;
+
+const PACKET_SIZE_BYTES: usize = 4;
 
 fn handle_client(mut stream: TcpStream) {
     let mut buf: Vec<u8>;
     loop {
-        let mut size_buf = [0u8; 4];
+        let mut size_buf = [0u8; PACKET_SIZE_BYTES];
         let size: u32;
 
         let _ = match stream.read(&mut size_buf) {
@@ -43,7 +47,10 @@ fn handle_client(mut stream: TcpStream) {
             }
         };
 
-        println!("{:?}", String::from_utf8(buf.clone()));
+        let string = String::from_utf8(buf).unwrap();
+        println!("{:?}", string);
+        let json: Value = serde_json::from_str(&string).unwrap();
+        println!("{:?}", json);
 
         // match stream.write(&buf) {
         //     Err(_) => break,
