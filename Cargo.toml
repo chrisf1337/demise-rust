@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Christopher Fu <chrisf1337@gmail.com>"]
 
 [dependencies]
-unicode-segmentation = "0.1.2"
-byteorder = "0.4"
-serde_json = "0.6.0"
+unicode-segmentation = "*"
+byteorder = "*"
+serde = "*"
+serde_json = "*"
+serde_macros = "*"

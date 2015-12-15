@@ -1,22 +1,25 @@
-#![feature(drain)]
+#![feature(drain, custom_derive, plugin)]
+#![plugin(serde_macros)]
 extern crate byteorder;
 extern crate serde_json;
+extern crate serde;
+extern crate serde_macros;
 
 mod buffer;
 mod editor;
 mod utils;
 use buffer::{Buffer};
 use editor::{Editor, MoveAction, Actionable};
-use utils::{Direction, Coord};
+use utils::{Direction, Coord, KeyEvent};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::io::{Read, Write, Cursor};
 use byteorder::*;
-use serde_json::Value;
 
 const PACKET_SIZE_BYTES: usize = 4;
 
 fn handle_client(mut stream: TcpStream) {
+    let mut editor = Editor::new();
     let mut buf: Vec<u8>;
     loop {
         let mut size_buf = [0u8; PACKET_SIZE_BYTES];
@@ -49,8 +52,14 @@ fn handle_client(mut stream: TcpStream) {
 
         let string = String::from_utf8(buf).unwrap();
         println!("{:?}", string);
-        let json: Value = serde_json::from_str(&string).unwrap();
-        println!("{:?}", json);
+        let result = serde_json::from_str(&string);
+        if result.is_err() {
+            println!("JSON parsing error");
+        } else {
+            let json: KeyEvent = result.unwrap();
+            println!("{:?}", json);
+            editor.perform_action_for_key_event(&json);
+        }
 
         // match stream.write(&buf) {
         //     Err(_) => break,

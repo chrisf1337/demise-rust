@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
 use std::io;
-use utils::{Direction, Coord};
+use utils::{Direction, Coord, KeyEvent, key_code_from_i32};
 
 pub struct Editor {
     pub buffers: Vec<Buffer>,
@@ -37,6 +37,14 @@ impl<'a> Editor {
             buffer.insert_string_at_coord(line, &Coord::new(0, index));
         }
         Ok(())
+    }
+
+    pub fn perform_action_for_key_event(&mut self, key_event: &KeyEvent) {
+        let key_code = key_code_from_i32(key_event.key_char);
+        match key_code {
+            Some(k) => println!("{:?}", k),
+            None => println!("Key code not recognized.")
+        };
     }
 }
 

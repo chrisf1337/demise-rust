@@ -1,4 +1,6 @@
 use std::cmp::Ordering;
+extern crate serde_macros;
+
 
 #[derive(PartialEq)]
 pub enum Direction {
@@ -37,5 +39,29 @@ impl PartialOrd for Coord {
         else {
             Some(Ordering::Less)
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct KeyEvent {
+    pub key_char: i32,
+    pub modifier_flags: i32
+}
+
+#[derive(Debug)]
+pub enum KeyCode {
+    UpArrowFunctionKey,    // 0xF700
+    DownArrowFunctionKey,  // 0xF701
+    LeftArrowFunctionKey,  // 0xF702
+    RightArrowFunctionKey  // 0xF703
+}
+
+pub fn key_code_from_i32(key_code: i32) -> Option<KeyCode> {
+    match key_code {
+        0xF700 => Some(KeyCode::UpArrowFunctionKey),
+        0xF701 => Some(KeyCode::DownArrowFunctionKey),
+        0xF702 => Some(KeyCode::LeftArrowFunctionKey),
+        0xF703 => Some(KeyCode::RightArrowFunctionKey),
+        _ => None
     }
 }
