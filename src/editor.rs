@@ -6,8 +6,10 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::result::Result;
 use std::io;
-use utils::{Direction, Coord, KeyEvent, key_code_from_i32};
+use std::fmt;
+use utils::{Direction, Coord, KeyEvent, key_code_from_i32, KeyCode};
 
+#[derive(Debug)]
 pub struct Editor {
     pub buffers: Vec<Buffer>,
     pub current_buffer_index: usize
@@ -39,19 +41,63 @@ impl<'a> Editor {
         Ok(())
     }
 
-    pub fn perform_action_for_key_event(&mut self, key_event: &KeyEvent) {
+    fn move_action_for_key_event(&self, key_event: &KeyEvent) -> Option<MoveAction> {
         let key_code = key_code_from_i32(key_event.key_char);
         match key_code {
-            Some(k) => println!("{:?}", k),
-            None => println!("Key code not recognized.")
-        };
+            Some(k) => match k {
+                KeyCode::UpArrowFunctionKey => {
+                    Some(MoveAction::new(self, Direction::Up, 1))
+                },
+                KeyCode::DownArrowFunctionKey => {
+                    Some(MoveAction::new(self, Direction::Down, 1))
+                },
+                KeyCode::LeftArrowFunctionKey => {
+                    Some(MoveAction::new(self, Direction::Left, 1))
+                },
+                KeyCode::RightArrowFunctionKey => {
+                    Some(MoveAction::new(self, Direction::Right, 1))
+                }
+            },
+            None => {
+                println!("Key code not recognized.");
+                None
+            }
+        }
+    }
+
+    pub fn perform_action_for_key_event(&mut self, key_event: &KeyEvent) -> ActionResult {
+        let move_action = self.move_action_for_key_event(key_event);
+        if move_action.is_some() {
+            move_action.unwrap().perform()
+        } else {
+            ActionResult {
+                change_types: vec![],
+                new_point: Coord::new(0, 0),
+                lines_changed_after_line: 0,
+                lines_changed: vec![]
+            }
+        }
     }
 }
 
 pub trait Actionable {
-    fn perform(&self);
+    fn perform(&self) -> ActionResult;
 }
 
+pub enum ChangeType {
+    NoChange,
+    PointChanged,
+    LinesChanged
+}
+
+pub struct ActionResult {
+    pub change_types: Vec<ChangeType>,
+    pub new_point: Coord,
+    pub lines_changed_after_line: usize,
+    pub lines_changed: Vec<usize>
+}
+
+#[derive(Debug)]
 pub struct MoveAction<'a> {
     pub editor: &'a Editor,
     pub direction: Direction,
@@ -66,14 +112,22 @@ impl<'a> MoveAction<'a> {
             units: units,
         }
     }
+}
 
-    pub fn perform(&self) {
-        // self.editor.current_buffer().
+impl<'a> fmt::Display for MoveAction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MoveAction {{ direction: {:?}, units: {} }}", self.direction, self.units)
     }
 }
 
 impl<'a> Actionable for MoveAction<'a> {
-    fn perform(&self) {
-        println!("Perform MoveAction");
+    fn perform(&self) -> ActionResult {
+        println!("Perform {}", self);
+        ActionResult {
+            change_types: vec![],
+            new_point: Coord::new(0, 0),
+            lines_changed_after_line: 0,
+            lines_changed: vec![]
+        }
     }
 }
