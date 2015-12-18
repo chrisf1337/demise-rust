@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 extern crate serde_macros;
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Direction {
     Up,
     Down,

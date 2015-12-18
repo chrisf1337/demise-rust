@@ -41,7 +41,7 @@ impl<'a> Editor {
         Ok(())
     }
 
-    fn move_action_for_key_event(&self, key_event: &KeyEvent) -> Option<MoveAction> {
+    fn move_action_for_key_event(&mut self, key_event: &KeyEvent) -> Option<MoveAction> {
         let key_code = key_code_from_i32(key_event.key_char);
         match key_code {
             Some(k) => match k {
@@ -66,30 +66,33 @@ impl<'a> Editor {
     }
 
     pub fn perform_action_for_key_event(&mut self, key_event: &KeyEvent) -> ActionResult {
-        let move_action = self.move_action_for_key_event(key_event);
-        if move_action.is_some() {
-            move_action.unwrap().perform()
-        } else {
-            ActionResult {
-                change_types: vec![],
-                new_point: Coord::new(0, 0),
-                lines_changed_after_line: 0,
-                lines_changed: vec![]
+        {
+            let move_action = self.move_action_for_key_event(key_event);
+            if move_action.is_some() {
+                return move_action.unwrap().perform()
             }
+        }
+        ActionResult {
+            change_types: vec![],
+            new_point: self.current_buffer().point(),
+            lines_changed_after_line: 0,
+            lines_changed: vec![]
         }
     }
 }
 
 pub trait Actionable {
-    fn perform(&self) -> ActionResult;
+    fn perform(&mut self) -> ActionResult;
 }
 
+#[derive(Debug)]
 pub enum ChangeType {
     NoChange,
     PointChanged,
     LinesChanged
 }
 
+#[derive(Debug)]
 pub struct ActionResult {
     pub change_types: Vec<ChangeType>,
     pub new_point: Coord,
@@ -99,13 +102,13 @@ pub struct ActionResult {
 
 #[derive(Debug)]
 pub struct MoveAction<'a> {
-    pub editor: &'a Editor,
+    pub editor: &'a mut Editor,
     pub direction: Direction,
     pub units: i32,
 }
 
 impl<'a> MoveAction<'a> {
-    pub fn new(editor: &Editor, direction: Direction, units: i32) -> MoveAction {
+    pub fn new(editor: &mut Editor, direction: Direction, units: i32) -> MoveAction {
         MoveAction {
             editor: editor,
             direction: direction,
@@ -121,11 +124,12 @@ impl<'a> fmt::Display for MoveAction<'a> {
 }
 
 impl<'a> Actionable for MoveAction<'a> {
-    fn perform(&self) -> ActionResult {
+    fn perform(&mut self) -> ActionResult {
         println!("Perform {}", self);
+        let new_point = self.editor.current_buffer().move_point_in_dir(&self.direction, self.units);
         ActionResult {
-            change_types: vec![],
-            new_point: Coord::new(0, 0),
+            change_types: vec![ChangeType::PointChanged],
+            new_point: new_point,
             lines_changed_after_line: 0,
             lines_changed: vec![]
         }

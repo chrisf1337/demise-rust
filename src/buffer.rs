@@ -159,12 +159,12 @@ impl Buffer {
         return self.point.clone();
     }
 
-    pub fn move_point_in_dir(&mut self, direction: Direction, units: i32) -> Coord {
+    pub fn move_point_in_dir(&mut self, direction: &Direction, units: i32) -> Coord {
         if units == 0 {
             return self.point.clone();
         }
         match direction {
-            Direction::Up => {
+            &Direction::Up => {
                 let mut offset: i32;
                 if units < 0 {
                     offset = -units;
@@ -180,7 +180,7 @@ impl Buffer {
                     self.point.x = self.contents[self.point.y].len() - 1;
                 }
             },
-            Direction::Down => {
+            &Direction::Down => {
                 let mut offset: i32;
                 if units < 0 {
                     offset = -units;
@@ -198,10 +198,10 @@ impl Buffer {
                     self.point.x = self.contents[self.point.y].len() - 1;
                 }
             },
-            Direction::Left => {
+            &Direction::Left => {
                 self.move_point_dist(-units);
             },
-            Direction::Right => {
+            &Direction::Right => {
                 self.move_point_dist(units);
             },
         }
