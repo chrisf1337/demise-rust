@@ -85,14 +85,14 @@ pub trait Actionable {
     fn perform(&mut self) -> ActionResult;
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub enum ChangeType {
     NoChange,
     PointChanged,
     LinesChanged
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct ActionResult {
     pub change_types: Vec<ChangeType>,
     pub new_point: Coord,

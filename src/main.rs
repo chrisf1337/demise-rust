@@ -12,19 +12,20 @@ use editor::{Editor};
 use utils::{KeyEvent};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
-use std::io::{Read, Cursor};
+use std::io::{Read, Write, Cursor};
 use byteorder::*;
 
 const PACKET_SIZE_BYTES: usize = 4;
 
 fn handle_client(mut stream: TcpStream) {
     let mut editor = Editor::new();
-    let mut buf: Vec<u8>;
+    let _ = editor.open_file(0);
+    let mut recv_buf: Vec<u8>;
     loop {
-        let mut size_buf = [0u8; PACKET_SIZE_BYTES];
-        let size: u32;
+        let mut recv_size_buf = [0u8; PACKET_SIZE_BYTES];
+        let recv_size: u32;
 
-        let _ = match stream.read(&mut size_buf) {
+        let _ = match stream.read(&mut recv_size_buf) {
             Err(e) => panic!("Got an error: {}", e),
             Ok(m) => {
                 if m == 0 {
@@ -34,12 +35,12 @@ fn handle_client(mut stream: TcpStream) {
             }
         };
 
-        println!("{:?}", size_buf);
-        size = Cursor::new(&size_buf).read_u32::<LittleEndian>().unwrap();
-        println!("{}", size);
+        println!("{:?}", recv_size_buf);
+        recv_size = Cursor::new(&recv_size_buf).read_u32::<LittleEndian>().unwrap();
+        println!("{}", recv_size);
 
-        buf = vec![0; size as usize];
-        let _ = match stream.read(&mut buf[..]) {
+        recv_buf = vec![0; recv_size as usize];
+        let _ = match stream.read(&mut recv_buf[..]) {
             Err(e) => panic!("Got an error: {}", e),
             Ok(m) => {
                 if m == 0 {
@@ -49,21 +50,30 @@ fn handle_client(mut stream: TcpStream) {
             }
         };
 
-        let string = String::from_utf8(buf).unwrap();
+        let string = String::from_utf8(recv_buf).unwrap();
         println!("{:?}", string);
-        let result = serde_json::from_str(&string);
-        if result.is_err() {
+        let recv_result = serde_json::from_str(&string);
+        if recv_result.is_err() {
             println!("JSON parsing error");
         } else {
-            let json: KeyEvent = result.unwrap();
-            println!("{:?}", json);
-            println!("{:?}", editor.perform_action_for_key_event(&json));
-        }
+            let recv_json: KeyEvent = recv_result.unwrap();
+            println!("{:?}", recv_json);
+            let action_result = editor.perform_action_for_key_event(&recv_json);
+            println!("{:?}", action_result);
 
-        // match stream.write(&buf) {
-        //     Err(_) => break,
-        //     Ok(_) => continue
-        // }
+            let mut send_size_vec = vec![];
+            let send_result = serde_json::to_vec(&action_result);
+            if send_result.is_err() {
+                println!("JSON serialization error");
+            } else {
+                let send_json = send_result.unwrap();
+                let send_size = send_json.len() as u32;
+                send_size_vec.write_u32::<LittleEndian>(send_size).unwrap();
+                println!("{:?}", send_size_vec);
+                let _ = stream.write(&send_size_vec[..]);
+                let _ = stream.write(&send_json[..]);
+            }
+        }
     }
 }
 

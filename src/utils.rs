@@ -10,7 +10,7 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Serialize, Debug, Copy, Clone, PartialEq)]
 pub struct Coord {
     pub x: usize,
     pub y: usize
