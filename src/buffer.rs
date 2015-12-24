@@ -2,7 +2,7 @@ extern crate unicode_segmentation;
 use self::unicode_segmentation::UnicodeSegmentation as UniSeg;
 use utils::{Direction, Coord};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Buffer {
     pub contents: Vec<String>,
     pub bytes: usize,

@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use buffer::Buffer;
 extern crate serde_macros;
 
 
@@ -10,7 +11,7 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Serialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct Coord {
     pub x: usize,
     pub y: usize
@@ -44,8 +45,51 @@ impl PartialOrd for Coord {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct KeyEvent {
+    pub message_type: MessageType,
     pub key_char: i32,
     pub modifier_flags: i32
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BufferStateRequest {
+    pub message_type: MessageType,
+    pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BufferStateResponse {
+    pub message_type: MessageType,
+    pub buffer: Buffer,
+}
+
+impl Message for KeyEvent {
+    fn message_type(&self) -> MessageType {
+        self.message_type.clone()
+    }
+}
+
+impl Message for BufferStateRequest {
+    fn message_type(&self) -> MessageType {
+        self.message_type.clone()
+    }
+}
+
+impl Message for BufferStateResponse {
+    fn message_type(&self) -> MessageType {
+        self.message_type.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum MessageType {
+    BufferStateRequest,
+    BufferStateResponse,
+    ActionResult,
+    KeyEvent,
+}
+
+pub trait Message {
+    fn message_type(&self) -> MessageType;
 }
 
 #[derive(Debug)]

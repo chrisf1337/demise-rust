@@ -7,13 +7,16 @@ extern crate serde_macros;
 
 pub mod buffer;
 pub mod editor;
-mod utils;
+pub mod utils;
 use editor::{Editor};
-use utils::{KeyEvent};
+use utils::{KeyEvent, BufferStateRequest, BufferStateResponse, MessageType};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
-use std::io::{Read, Write, Cursor};
+use std::io::prelude::*;
+use std::io::{Cursor};
 use byteorder::*;
+use serde_json::value::{Value};
+use serde::ser::Serialize;
 
 const PACKET_SIZE_BYTES: usize = 4;
 
@@ -36,12 +39,21 @@ fn handle_client(mut stream: TcpStream) {
         };
 
         println!("{:?}", recv_size_buf);
-        recv_size = Cursor::new(&recv_size_buf).read_u32::<LittleEndian>().unwrap();
+        recv_size = match Cursor::new(&recv_size_buf).read_u32::<LittleEndian>() {
+            Ok(size) => size,
+            Err(e) => {
+                println!("Size conversion error: {}", e);
+                continue;
+            }
+        };
         println!("{}", recv_size);
 
         recv_buf = vec![0; recv_size as usize];
         let _ = match stream.read(&mut recv_buf[..]) {
-            Err(e) => panic!("Got an error: {}", e),
+            Err(e) => {
+                println!("Stream read error: {}", e);
+                continue;
+            },
             Ok(m) => {
                 if m == 0 {
                     break;
@@ -50,31 +62,84 @@ fn handle_client(mut stream: TcpStream) {
             }
         };
 
-        let string = String::from_utf8(recv_buf).unwrap();
-        println!("{:?}", string);
-        let recv_result = serde_json::from_str(&string);
-        if recv_result.is_err() {
-            println!("JSON parsing error");
-        } else {
-            let recv_json: KeyEvent = recv_result.unwrap();
+        let string = match String::from_utf8(recv_buf) {
+            Ok(s) => s,
+            Err(e) => {
+                println!("String conversion error: {}", e);
+                continue;
+            }
+        };
+        let recv_value: Value = match serde_json::from_str(&string) {
+            Ok(rv) => rv,
+            Err(e) => {
+                println!("Serde error: {}", e);
+                continue;
+            }
+        };
+        let message_type_object = match recv_value.lookup("message_type") {
+            Some(mt) => match mt.as_object() {
+                Some(mtv) => mtv,
+                None => {
+                    println!("Not an object");
+                    continue;
+                }
+            },
+            None => {
+                println!("No message_type element");
+                continue;
+            }
+        };
+
+        let message_type: Vec<_> = message_type_object.keys().cloned().collect();
+        assert_eq!(message_type.len(), 1);
+        if message_type[0] == "KeyEvent" {
+            let recv_json: KeyEvent = match serde_json::from_str(&string) {
+                Ok(rj) => rj,
+                Err(e) => {
+                    println!("KeyEvent deserialization error: {}", e);
+                    continue;
+                }
+            };
             println!("{:?}", recv_json);
             let action_result = editor.perform_action_for_key_event(&recv_json);
             println!("{:?}", action_result);
 
-            let mut send_size_vec = vec![];
-            let send_result = serde_json::to_vec(&action_result);
-            if send_result.is_err() {
-                println!("JSON serialization error");
-            } else {
-                let send_json = send_result.unwrap();
-                let send_size = send_json.len() as u32;
-                send_size_vec.write_u32::<LittleEndian>(send_size).unwrap();
-                println!("{:?}", send_size_vec);
-                let _ = stream.write(&send_size_vec[..]);
-                let _ = stream.write(&send_json[..]);
+            match send_message(&mut stream, &action_result) {
+                Err(e) => println!("Send message error: {}", e),
+                Ok(()) => {}
+            }
+        } else if message_type[0] == "BufferStateRequest" {
+            println!("Buffer state request received");
+            let recv_json: BufferStateRequest = match serde_json::from_str(&string) {
+                Ok(rj) => rj,
+                Err(e) => {
+                    println!("BufferStateRequest deserialization error: {}", e);
+                    continue;
+                }
+            };
+            let buffer = editor.buffers[recv_json.index].clone();
+            let buffer_state_response = BufferStateResponse {
+                message_type: MessageType::BufferStateResponse,
+                buffer: buffer
+            };
+            match send_message(&mut stream, &buffer_state_response) {
+                Ok(()) => {},
+                Err(e) => println!("Send message error: {}", e),
             }
         }
     }
+}
+
+fn send_message<T: Serialize>(stream: &mut TcpStream, message: &T) -> Result<()> {
+    let mut send_size_vec = vec![];
+    let send_result = serde_json::to_vec(&message);
+    let send_json = send_result.unwrap();
+    let send_size = send_json.len() as u32;
+    send_size_vec.write_u32::<LittleEndian>(send_size).unwrap();
+    println!("{:?}", send_size_vec);
+    try!(stream.write(&send_size_vec[..]));
+    try!(stream.write(&send_json[..]));
+    Ok(())
 }
 
 fn open_socket() {
@@ -102,7 +167,7 @@ fn main() {
 mod test {
     use buffer::Buffer;
     use editor::Editor;
-    use utils::{Direction, Coord, KeyEvent};
+    use utils::{Direction, Coord, MessageType, KeyEvent};
     use std::io::prelude::*;
 
     #[test]
@@ -290,9 +355,14 @@ mod test {
     fn test_editor_actions() {
         let mut editor = Editor::new();
         let _ = editor.open_file(0);
-        editor.perform_action_for_key_event(&KeyEvent { key_char: 0xF703, modifier_flags: 0 });
+        editor.perform_action_for_key_event(&KeyEvent { message_type: MessageType::KeyEvent, key_char: 0xF703, modifier_flags: 0 });
         assert_eq!(editor.current_buffer().point(), Coord::new(1, 0));
-        editor.perform_action_for_key_event(&KeyEvent { key_char: 0xF701, modifier_flags: 0 });
+        editor.perform_action_for_key_event(&KeyEvent { message_type: MessageType::KeyEvent, key_char: 0xF701, modifier_flags: 0 });
         assert_eq!(editor.current_buffer().point(), Coord::new(1, 1));
+    }
+
+    #[test]
+    fn test_serialize() {
+
     }
 }

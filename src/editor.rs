@@ -7,7 +7,7 @@ use std::fs::File;
 use std::result::Result;
 use std::io;
 use std::fmt;
-use utils::{Direction, Coord, KeyEvent, key_code_from_i32, KeyCode};
+use utils::{Direction, Coord, KeyEvent, key_code_from_i32, KeyCode, Message, MessageType};
 
 #[derive(Debug)]
 pub struct Editor {
@@ -73,6 +73,7 @@ impl<'a> Editor {
             }
         }
         ActionResult {
+            message_type: MessageType::ActionResult,
             change_types: vec![],
             new_point: self.current_buffer().point(),
             lines_changed_after_line: 0,
@@ -94,10 +95,17 @@ pub enum ChangeType {
 
 #[derive(Serialize, Debug)]
 pub struct ActionResult {
+    pub message_type: MessageType,
     pub change_types: Vec<ChangeType>,
     pub new_point: Coord,
     pub lines_changed_after_line: usize,
     pub lines_changed: Vec<usize>
+}
+
+impl Message for ActionResult {
+    fn message_type(&self) -> MessageType {
+        self.message_type.clone()
+    }
 }
 
 #[derive(Debug)]
@@ -128,7 +136,8 @@ impl<'a> Actionable for MoveAction<'a> {
         println!("Perform {}", self);
         let new_point = self.editor.current_buffer().move_point_in_dir(&self.direction, self.units);
         ActionResult {
-            change_types: vec![ChangeType::PointChanged],
+            message_type: MessageType::ActionResult,
+            change_types: vec![ChangeType::PointChanged, ChangeType::LinesChanged],
             new_point: new_point,
             lines_changed_after_line: 0,
             lines_changed: vec![]
